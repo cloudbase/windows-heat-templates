@@ -1,0 +1,544 @@
+{
+    "Description": "MS SQL Server 2012 Deployment",
+    "HeatTemplateVersion": "2013-05-23",
+    "Mappings": {
+        "Flavor2Arch": {
+            "m1.large": {
+                "Arch": "64"
+            },
+            "m1.medium": {
+                "Arch": "64"
+            },
+            "m1.small": {
+                "Arch": "64"
+            },
+            "m1.sminy": {
+                "Arch": "64"
+            },
+            "m1.xlarge": {
+                "Arch": "64"
+            }
+        },
+        "VersionArch2Image": {
+            "WS12R2": {
+                "64": "Windows Server 2012 R2 Std Eval VHD"
+            }
+        }
+    },
+    "Parameters": {
+        "ADDomainAdminPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The AD domain administrator password.",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "ADDomainAdminUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Description": "The domain administrator username.",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "ADDomainName": {
+            "Description": "The active directory domain name.",
+            "MinLength": "0",
+            "Type": "String"
+        },
+        "Flavor": {
+            "AllowedValues": [
+                "m1.tiny",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge"
+            ],
+            "ConstraintDescription": "Must be a valid flavor.",
+            "Description": "The ADDC flavor.",
+            "Type": "String"
+        },
+        "InstanceType": {
+            "AllowedValues": [
+                "m1.sminy",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge"
+            ],
+            "ConstraintDescription": "Must be a valid EC2 instance type.",
+            "Default": "m1.small",
+            "Description": "The MSSQL instance type.",
+            "Type": "String"
+        },
+        "IsoPath": {
+            "Default": "E:\\en_sql_server_2012_standard_edition_with_sp1_x64_dvd_1228198.iso",
+            "Description": "The path to the sql server 2012 iso file.",
+            "Type": "String"
+        },
+        "KeyName": {
+            "Description": "SSH keypair name to encrypt and post the user's password to the HTTP metadata service.",
+            "Type": "String"
+        },
+        "LocalAdminUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Description": "The local administrator username used to join the Active Directory Domain.",
+            "Type": "String"
+        },
+        "MSSQLAdminUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "Administrator",
+            "Description": "The MSSQL administrator username.",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "MSSQLFeatures": {
+            "Default": "SQLENGINE,ADV_SSMS",
+            "Description": "MSSQL Features to be installed.",
+            "Type": "String"
+        },
+        "MSSQLInstanceName": {
+            "Default": "MSSQLSERVER",
+            "Description": "MSSQL Instance Name.",
+            "Type": "String"
+        },
+        "MSSQLSaPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The MSSQL sa account password.",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "MSSQLServicePassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The password of the user under which the MSSQL service runs.",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "MSSQLServiceUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "sqlserver",
+            "Description": "The username under which the MSSQL service runs.",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "MediaDeviceVolumeId": {
+            "ConstraintDescription": "Must be a valid volume id.",
+            "Default": "bc4939cb-0aa0-4445-8db8-4f3b290e43d1",
+            "Description": "Volume id",
+            "Type": "String"
+        },
+        "PrivateNetId": {
+            "ConstraintDescription": "Must be a valid net id.",
+            "Default": "c093b5e5-1bbd-44c8-af9a-b35a3f96935f",
+            "Description": "private net id",
+            "Type": "String"
+        },
+        "PrivateSubnetId": {
+            "ConstraintDescription": "Must be a valid subnet id.",
+            "Default": "c093b5e5-1bbd-44c8-af9a-b35a3f96935f",
+            "Description": "Subnet private id",
+            "Type": "String"
+        },
+        "PublicNetId": {
+            "ConstraintDescription": "Must be a valid net id.",
+            "Default": "c093b5e5-1bbd-44c8-af9a-b35a3f96935f",
+            "Description": "public net id",
+            "Type": "String"
+        },
+        "WindowsVersion": {
+            "AllowedValues": [
+                "WS12R2"
+            ],
+            "Default": "WS12R2",
+            "Description": "Windows version of choice",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "ADDController": {
+            "Properties": {
+                "flavor": {
+                    "Ref": "Flavor"
+                },
+                "image": {
+                    "Fn::FindInMap": [
+                        "VersionArch2Image",
+                        {
+                            "Ref": "WindowsVersion"
+                        },
+                        {
+                            "Fn::FindInMap": [
+                                "Flavor2Arch",
+                                {
+                                    "Ref": "Flavor"
+                                },
+                                "Arch"
+                            ]
+                        }
+                    ]
+                },
+                "key_name": {
+                    "Ref": "KeyName"
+                },
+                "networks": [
+                    {
+                        "port": {
+                            "Ref": "floating_ip_port"
+                        }
+                    }
+                ],
+                "user_data": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#ps1_sysnative\n",
+                                "$ErrorActionPreference = 'Stop'\n",
+                                "Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools\n",
+                                "$user = [ADSI]'WinNT://./",
+                                {
+                                    "Ref": "ADDomainAdminUsername"
+                                },
+                                "'\n",
+                                "# Disable user\n",
+                                "#$user.userflags = 2\n",
+                                "#$user.SetInfo()\n",
+                                "$user.SetPassword('",
+                                {
+                                    "Ref": "ADDomainAdminPassword"
+                                },
+                                "')\n",
+                                "Import-Module ADDSDeployment\n",
+                                "$safeModePwd = (ConvertTo-SecureString '",
+                                {
+                                    "Ref": "ADDomainAdminPassword"
+                                },
+                                "' -AsPlainText -Force)\n",
+                                "Install-ADDSForest -DomainName '",
+                                {
+                                    "Ref": "ADDomainName"
+                                },
+                                ".local' -DomainNetbiosName '",
+                                {
+                                    "Ref": "ADDomainName"
+                                },
+                                "' -SafeModeAdministratorPassword $safeModePwd -InstallDns -Force -NoRebootOnCompletion\n",
+                                "$waitHandleUrl = \"",
+                                {
+                                    "Ref": "ADWaitHandle"
+                                },
+                                "\"\n",
+                                "$cfnMessage = '{\"Status\" : \"SUCCESS\",\"Reason\" : \"Configuration Complete\",\"UniqueId\" : \"ID1234\",\"Data\" : \"ADDC has completed configuration.\"}'\n",
+                                "Invoke-RestMethod -Method PUT -Uri $waitHandleUrl -Body $cfnMessage\n",
+                                "Restart-Computer -Force\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Type": "OS::Nova::Server"
+        },
+        "ADWaitCondition": {
+            "DependsOn": "ADDController",
+            "Properties": {
+                "Handle": {
+                    "Ref": "ADWaitHandle"
+                },
+                "Timeout": "3600"
+            },
+            "Type": "AWS::CloudFormation::WaitCondition"
+        },
+        "ADWaitHandle": {
+            "Type": "AWS::CloudFormation::WaitConditionHandle"
+        },
+        "MSSQLSERVER2012": {
+            "DependsOn": "ADWaitCondition",
+            "Properties": {
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "VersionArch2Image",
+                        {
+                            "Ref": "WindowsVersion"
+                        },
+                        {
+                            "Fn::FindInMap": [
+                                "Flavor2Arch",
+                                {
+                                    "Ref": "InstanceType"
+                                },
+                                "Arch"
+                            ]
+                        }
+                    ]
+                },
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SubnetId": {
+                    "Ref": "PrivateSubnetId"
+                },
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#ps1_sysnative\n",
+                                "Get-Disk | ? IsOffline | Set-Disk -IsOffline:$false\n",
+                                "$mssqlServiceUsername = \"",
+                                {
+                                    "Ref": "MSSQLServiceUsername"
+                                },
+                                "\"\n",
+                                "$mssqlServicePassword = \"",
+                                {
+                                    "Ref": "MSSQLServicePassword"
+                                },
+                                "\"\n",
+                                "$mssqlAdminUsername = \"",
+                                {
+                                    "Ref": "MSSQLAdminUsername"
+                                },
+                                "\"\n",
+                                "$mssqlSaPassword = \"",
+                                {
+                                    "Ref": "MSSQLSaPassword"
+                                },
+                                "\"\n",
+                                "$mssqlFeatures = \"",
+                                {
+                                    "Ref": "MSSQLFeatures"
+                                },
+                                "\"\n",
+                                "$mssqlInstanceName = \"",
+                                {
+                                    "Ref": "MSSQLInstanceName"
+                                },
+                                "\"\n",
+                                "$mssqlIsoPath = \"",
+                                {
+                                    "Ref": "IsoPath"
+                                },
+                                "\"\n",
+                                "$adDomainName = \"",
+                                {
+                                    "Ref": "ADDomainName"
+                                },
+                                "\"\n",
+                                "$adDomainAdminUsername = \"",
+                                {
+                                    "Ref": "ADDomainAdminUsername"
+                                },
+                                "\"\n",
+                                "$adDomainAdminPassword = \"",
+                                {
+                                    "Ref": "ADDomainAdminPassword"
+                                },
+                                "\"\n",
+                                "$localAdminUsername = \"",
+                                {
+                                    "Ref": "LocalAdminUsername"
+                                },
+                                "\"\n",
+                                "\n",
+                                "function Generate-Windows-Password($passwordLength=30){\n",
+                                "$passwordFound = $False\n",
+                                "$maxSteps = 100\n",
+                                "$password = \"\"\n",
+                                "$assembly = [Reflection.Assembly]::LoadWithPartialName(\"System.Web\")\n",
+                                "\n",
+                                "while ($passwordFound -ne $True -and $maxSteps -ne 0){\n",
+                                "$password =  [System.Web.Security.Membership]::GeneratePassword($passwordLength,0)\n",
+                                "\n",
+                                "$i = 0\n",
+                                "$upper = [regex]\"[A-Z]\"\n",
+                                "$lower = [regex]\"[a-z]\"\n",
+                                "$number = [regex]\"[0-9]\"\n",
+                                "$special = [regex]\"[^a-zA-Z0-9]\"\n",
+                                "If ($upper.Matches($password).count -ge 1){\n",
+                                "$i++\n",
+                                "}\n",
+                                "If ($lower.Matches($password).count -ge 1){\n",
+                                "$i++\n",
+                                "}\n",
+                                "If ($number.Matches($password).count -ge 1){\n",
+                                "$i++\n",
+                                "}\n",
+                                "If ($special.Matches($password).count -ge 1){\n",
+                                "$i++\n",
+                                "}\n",
+                                "If ($i -eq 4){\n",
+                                "$passwordFound = $True\n",
+                                "}\n",
+                                "$maxSteps = $maxSteps - 1\n",
+                                "}\n",
+                                "if ($passwordFound){\n",
+                                "return $password\n",
+                                "}\n",
+                                "else{\n",
+                                "throw \"Failed to generate password.\"\n",
+                                "}\n",
+                                "}\n",
+                                "\n",
+                                "$iso = Mount-DiskImage -PassThru $mssqlIsoPath\n",
+                                "$isoSetupPath = (Get-Volume -DiskImage $iso).DriveLetter + \":\\setup.exe\"\n",
+                                "\n",
+                                "Write-Host \"Installing Sql Server 2012\"\n",
+                                "NET USER $mssqlServiceUsername $mssqlServicePassword /ADD\n",
+                                "$hostname = hostname\n",
+                                "$PARAMS=\"/ACTION=install \"\n",
+                                "$PARAMS+=\"/Q \" #full quiet mode - required by cloudbaseinit\n",
+                                "$PARAMS+=\"/IACCEPTSQLSERVERLICENSETERMS=1 \"\n",
+                                "$PARAMS+=\"/INSTANCENAME=$mssqlInstanceName \"\n",
+                                "$PARAMS+=\"/FEATURES=$mssqlFeatures \" #features enabled. Possible features are stated at http://technet.microsoft.com/en-us/library/ms144259.aspx#Feature\n",
+                                "if ($adDomainName -ne \"\")\n",
+                                "{\n",
+                                "#Create local administrator to enable Active Directory Domain join\n",
+                                "$computer = [ADSI]\"WinNT://$env:computername\"\n",
+                                "$localAdmin = $Computer.Create(\"User\", $localAdminUsername)\n",
+                                "$localAdminPassword = Generate-Windows-Password\n",
+                                "$localAdmin.SetPassword($localAdminPassword)\n",
+                                "$localAdmin.SetInfo()\n",
+                                "([ADSI]\"WinNT://$env:computername/Administrators,group\").Add(\"WinNT://$env:computername/$localAdminUsername\")\n",
+                                "\n",
+                                "#Join the Active Directory Domain\n",
+                                "$retries = 10\n",
+                                "$joinedDomain = $False\n",
+                                "while ($joinedDomain -eq $False -and $retries -ne 0){\n",
+                                "try{\n",
+                                "$joinedDomain = $True\n",
+                                "netdom join $env:computername /Domain:$adDomainName /UserD:$adDomainAdminUsername /PasswordD:$adDomainAdminPassword /UserO:$localAdminUsername /PasswordO:$localAdminPassword\n",
+                                "}\n",
+                                "catch {\n",
+                                "$joinedDomain = $False\n",
+                                "$retries = $retries -1\n",
+                                "#Wait for the AD to restart",
+                                "Sleep 10\n",
+                                "#Regenerate password\n",
+                                "$localAdminPassword = Generate-Windows-Password\n",
+                                "$localAdmin.SetPassword($localAdminPassword)\n",
+                                "$localAdmin.SetInfo()\n",
+                                "}\n",
+                                "}\n",
+                                "if ($joinedDomain -eq $False){\n",
+                                "throw \"Failed to join domain\"\n",
+                                "}\n",
+                                "$PARAMS+=\"/SQLSYSADMINACCOUNTS=$adDomainName\\$adDomainAdminUsername \"\n",
+                                "}\n",
+                                "else\n",
+                                "{\n",
+                                "$PARAMS+=\"/SQLSYSADMINACCOUNTS=.\\$mssqlAdminUsername \"\n",
+                                "}\n",
+                                "$PARAMS+=\"/UpdateEnabled=1 \"\n",
+                                "#$PARAMS+=\"/UpdateSource=\"\" \"\n",
+                                "#$PARAMS+=\"/AGTSVCACCOUNT=\"\" \"\n",
+                                "#$PARAMS+=\"/AGTSVCPASSWORD =\"\" \"\n",
+                                "$PARAMS+=\"/AGTSVCSTARTUPTYPE=Automatic \"\n",
+                                "$PARAMS+=\"/BROWSERSVCSTARTUPTYPE=Automatic \"\n",
+                                "#$PARAMS+=\"/INSTALLSQLDATADIR=\"\" \"\n",
+                                "$PARAMS+=\"/SECURITYMODE=SQL \"\n",
+                                "$PARAMS+=\"/SAPWD=$mssqlSaPassword \"\n",
+                                "#$PARAMS+=\"/SQLBACKUPDIR=\"\" \"\n",
+                                "#$PARAMS+=\"/SQLCOLLATION=\"\" \"\n",
+                                "$PARAMS+=\"/SQLSVCACCOUNT=.\\$mssqlServiceUsername \"\n",
+                                "$PARAMS+=\"/SQLSVCPASSWORD=$mssqlServicePassword \"\n",
+                                "$PARAMS+=\"/SQLSVCSTARTUPTYPE=Automatic \"\n",
+                                "$PARAMS+=\"/NPENABLED=1 \"\n",
+                                "$PARAMS+=\"/TCPENABLED=1 /ERRORREPORTING=1\"\n",
+                                "\n",
+                                "Start-Process -Wait -FilePath $isoSetupPath -ArgumentList $PARAMS\n",
+                                "if (!$?) {\n",
+                                "throw \"Failed to install MSSQL SERVER 2012.\"\n",
+                                "}\n",
+                                "else{\n",
+                                "$waitHandleUrl = \"",
+                                {
+                                    "Ref": "MSSQLWaitHandle"
+                                },
+                                "\"\n",
+                                "$cfnMessage = '{\"Status\" : \"SUCCESS\",\"Reason\" : \"Configuration Complete\",\"UniqueId\" : \"ID1234\",\"Data\" : \"MSSQL has completed configuration.\"}'\n",
+                                "Invoke-RestMethod -Method PUT -Uri $waitHandleUrl -Body $cfnMessage\n",
+                                "#Cleanup\n",
+                                "if ($domain -ne \"\"){\n",
+                                "#Disable local admin account\n",
+                                "$localAdmin.userflags = 2\n",
+                                "$localAdmin.SetInfo()\n",
+                                "}\n",
+                                "#Unmount the sql server iso file\n",
+                                "Dismount-DiskImage -ImagePath $mssqlIsoPath\n",
+                                "}\n",
+                                "\n",
+                                "\n",
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Type": "AWS::EC2::Instance"
+        },
+        "MSSQLWaitCondition": {
+            "DependsOn": "MSSQLSERVER2012",
+            "Properties": {
+                "Handle": {
+                    "Ref": "MSSQLWaitHandle"
+                },
+                "Timeout": "3600"
+            },
+            "Type": "AWS::CloudFormation::WaitCondition"
+        },
+        "MSSQLWaitHandle": {
+            "Type": "AWS::CloudFormation::WaitConditionHandle"
+        },
+        "attachment": {
+            "Properties": {
+                "instance_uuid": {
+                    "Ref": "MSSQLSERVER2012"
+                },
+                "mountpoint": "/dev/sdb",
+                "volume_id": {
+                    "Ref": "MediaDeviceVolumeId"
+                }
+            },
+            "Type": "OS::Cinder::VolumeAttachment"
+        },
+        "floating_ip": {
+            "Properties": {
+                "floating_network_id": {
+                    "Ref": "PublicNetId"
+                },
+                "port_id": {
+                    "Ref": "floating_ip_port"
+                }
+            },
+            "Type": "OS::Neutron::FloatingIP"
+        },
+        "floating_ip_port": {
+            "Properties": {
+                "fixed_ips": [
+                    {
+                        "subnet_id": {
+                            "Ref": "PrivateSubnetId"
+                        }
+                    }
+                ],
+                "network_id": {
+                    "Ref": "PrivateNetId"
+                }
+            },
+            "Type": "OS::Neutron::Port"
+        }
+    }
+}
