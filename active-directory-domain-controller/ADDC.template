@@ -1,0 +1,102 @@
+﻿{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "Deploys a new Active Directory forest domain controller.",
+
+  "Parameters" : {
+
+    "KeyName" : {
+      "Description" : "Name of an existing EC2 KeyPair to encrypt the Admin password",
+      "Type" : "String"
+    },
+
+    "InstanceType" : {
+      "Description" : "EC2 instance type",
+      "Type" : "String",
+      "Default" : "m1.small",
+      "AllowedValues" : [ "m1.sminy", "m1.small", "m1.medium", "m1.large", "m1.xlarge" ],
+      "ConstraintDescription" : "must be a valid EC2 instance type."
+    },
+
+    "SubnetId": {
+      "Type" : "String",
+      "Description" : "SubnetId of an existing subnet"
+    },
+
+    "DomainName": {
+      "Default": "cloudbase.local",
+      "Description" : "The domain name",
+      "Type": "String",
+      "MinLength": "3",
+      "MaxLength": "256",
+      "AllowedPattern" : "[A-Za-z0-9]+(?=[\\.\\-][a-zA-Z0-9])*\\.[a-zA-z09]+",
+      "ConstraintDescription" : "must be a valid DNS name."
+    },
+
+    "DomainNetbiosName": {
+      "Default": "cloudbase",
+      "Description" : "The Netbios domain name",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "15",
+      "AllowedPattern" : "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription" : "must begin with a letter and contain only alphanumeric characters."
+    },
+
+    "SafeModeAdministratorPassword": {
+      "Default": "Passw0rd",
+      "Description" : "The safe mode administration password",
+      "Type": "String",
+      "MinLength": "8",
+      "MaxLength": "64",
+      "AllowedPattern" : "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+      "ConstraintDescription": "Must contain letters, numbers and symbols"
+    },
+
+    "WindowsVersion": {
+      "Default": "WS12R2",
+      "Description" : "Windows version of choice",
+      "Type": "String",
+      "AllowedValues" : [ "WS12R2" ]
+    }
+  },
+
+  "Mappings" : {
+    "AWSInstanceType2Arch" : {
+      "m1.small"    : { "Arch" : "64" },
+      "m1.medium"    : { "Arch" : "64" },
+      "m1.large"   : { "Arch" : "64" },
+      "m1.xlarge"   : { "Arch" : "64" },
+      "m1.sminy" :  { "Arch" : "64" }
+    },
+    "VersionArch2Image": {
+      "WS12R2" : { "64" : "Windows Server 2012 R2 Std Eval VHD" }
+    }
+  },
+
+  "Resources" : {
+    "DomainController": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "ImageId" : { "Fn::FindInMap" : [ "VersionArch2Image", { "Ref" : "WindowsVersion" },
+                          { "Fn::FindInMap" : [ "AWSInstanceType2Arch", { "Ref" : "InstanceType" }, "Arch" ] } ] },
+        "InstanceType"   : { "Ref" : "InstanceType" },
+        "SubnetId"       : { "Ref" : "SubnetId" },
+        "KeyName"        : { "Ref" : "KeyName" },
+        "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
+          "#ps1_sysnative\n",
+          "$ErrorActionPreference = 'Stop'\n",
+          "Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools\n",
+          "$user = [ADSI]'WinNT://./Administrator'\n",
+          "# Disable user\n",
+          "#$user.userflags = 2\n",
+          "#$user.SetInfo()\n",
+          "$user.SetPassword('", { "Ref" : "SafeModeAdministratorPassword" }, "')\n",
+          "Import-Module ADDSDeployment\n",
+          "$safeModePwd = (ConvertTo-SecureString '", { "Ref" : "SafeModeAdministratorPassword" }, "' -AsPlainText -Force)\n",
+          "Install-ADDSForest -DomainName '", { "Ref" : "DomainName" }, "' -DomainNetbiosName '", { "Ref" : "DomainNetbiosName" }, "' -SafeModeAdministratorPassword $safeModePwd -InstallDns -Force\n",
+        ]]}}
+      }
+    }
+  }
+}
