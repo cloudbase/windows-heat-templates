@@ -1,0 +1,750 @@
+{
+    "Description": "MS Exchange Server 2013 Deployment",
+    "HeatTemplateVersion": "2013-05-23",
+    "Mappings": {
+        "Flavor2Arch": {
+            "m1.large": {
+                "Arch": "64"
+            },
+            "m1.medium": {
+                "Arch": "64"
+            },
+            "m1.small": {
+                "Arch": "64"
+            },
+            "m1.sminy": {
+                "Arch": "64"
+            },
+            "m1.xlarge": {
+                "Arch": "64"
+            }
+        },
+        "VersionArch2Image": {
+            "WS12R2": {
+                "64": "Windows Server 2012 R2 Std Eval VHD"
+            }
+        }
+    },
+    "Parameters": {
+        "ADDomainAdminPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The AD domain administrator password.",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "ADDomainAdminUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Description": "The domain administrator username.",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "ADDomainName": {
+            "Description": "The active directory domain name.",
+            "MinLength": "0",
+            "Type": "String"
+        },
+        "AdministratorPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The Domain Administrator password",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "AdministratorUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "Administrator",
+            "Description": "The Domain Administrator username",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "DatabaseName": {
+            "Default": "exchange2013_db1",
+            "Description": "Exchange Mailbox Database Name",
+            "Type": "String"
+        },
+        "Flavor": {
+            "AllowedValues": [
+                "m1.tiny",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge"
+            ],
+            "ConstraintDescription": "Must be a valid flavor.",
+            "Description": "",
+            "Type": "String"
+        },
+        "FrontendImage": {
+            "Default": "fedora20",
+            "Description": "Redhat linux image used for reverse proxy",
+            "Type": "String"
+        },
+        "InstanceType": {
+            "AllowedValues": [
+                "m1.sminy",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge"
+            ],
+            "ConstraintDescription": "Must be a valid EC2 instance type.",
+            "Default": "m1.medium",
+            "Description": "The exchange server instance type.",
+            "Type": "String"
+        },
+        "IsoSetupPath": {
+            "Default": "E:\\mu_exchange_server_2013_x64_dvd_1112105.iso",
+            "Description": "The path to the sql server 2012 iso file",
+            "Type": "String"
+        },
+        "KeyName": {
+            "Description": "Name of an existing keypair to enable SSH access to the instances",
+            "Type": "String"
+        },
+        "LocalAdministratorUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "ader",
+            "Description": "The local administrator account",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "MediaDeviceVolumeId": {
+            "ConstraintDescription": "Must be a valid volume id.",
+            "Default": "3c8107b2-c33d-4f35-9e65-b1eb9a423a98",
+            "Description": "Volume id",
+            "Type": "String"
+        },
+        "OwaHostName": {
+            "Default": "owa.cloudbase.local",
+            "Description": "The default name of the owa website",
+            "Type": "String"
+        },
+        "PrivateNetId": {
+            "ConstraintDescription": "Must be a valid net id.",
+            "Default": "3cbfe7a6-4c08-4b30-9788-785e7c9fa177",
+            "Description": "private net id",
+            "Type": "String"
+        },
+        "PrivateSubnetId": {
+            "ConstraintDescription": "Must be a valid subnet id.",
+            "Default": "3cbfe7a6-4c08-4b30-9788-785e7c9fa177",
+            "Description": "Subnet private id",
+            "Type": "String"
+        },
+        "PublicNetId": {
+            "ConstraintDescription": "Must be a valid net id.",
+            "Default": "3cbfe7a6-4c08-4b30-9788-785e7c9fa177",
+            "Description": "public net id",
+            "Type": "String"
+        },
+        "ServerName": {
+            "Default": "ExchangeServwer",
+            "Description": "Server name",
+            "Type": "String"
+        },
+        "WindowsVersion": {
+            "AllowedValues": [
+                "WS12R2"
+            ],
+            "Default": "WS12R2",
+            "Description": "Windows version of choice",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "ADDController": {
+            "Properties": {
+                "flavor": {
+                    "Ref": "Flavor"
+                },
+                "image": {
+                    "Fn::FindInMap": [
+                        "VersionArch2Image",
+                        {
+                            "Ref": "WindowsVersion"
+                        },
+                        {
+                            "Fn::FindInMap": [
+                                "Flavor2Arch",
+                                {
+                                    "Ref": "Flavor"
+                                },
+                                "Arch"
+                            ]
+                        }
+                    ]
+                },
+                "key_name": {
+                    "Ref": "KeyName"
+                },
+                "name": "addc-ctrl-exchange",
+                "networks": [
+                    {
+                        "port": {
+                            "Ref": "floating_ip_port"
+                        }
+                    }
+                ],
+                "user_data": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#ps1_sysnative\n",
+                                "$ErrorActionPreference = 'Stop'\n",
+                                "Install-WindowsFeature -Name AD-Domain-Services -IncludeManagementTools\n",
+                                "$user = [ADSI]'WinNT://./",
+                                {
+                                    "Ref": "ADDomainAdminUsername"
+                                },
+                                "'\n",
+                                "# Disable user\n",
+                                "#$user.userflags = 2\n",
+                                "#$user.SetInfo()\n",
+                                "$user.SetPassword('",
+                                {
+                                    "Ref": "ADDomainAdminPassword"
+                                },
+                                "')\n",
+                                "Import-Module ADDSDeployment\n",
+                                "$safeModePwd = (ConvertTo-SecureString '",
+                                {
+                                    "Ref": "ADDomainAdminPassword"
+                                },
+                                "' -AsPlainText -Force)\n",
+                                "Install-ADDSForest -DomainName '",
+                                {
+                                    "Ref": "ADDomainName"
+                                },
+                                ".local' -DomainNetbiosName '",
+                                {
+                                    "Ref": "ADDomainName"
+                                },
+                                "' -SafeModeAdministratorPassword $safeModePwd -InstallDns -Force -NoRebootOnCompletion\n",
+                                "$waitHandleUrl = \"",
+                                {
+                                    "Ref": "ADWaitHandle"
+                                },
+                                "\"\n",
+                                "$cfnMessage = '{\"Status\" : \"SUCCESS\",\"Reason\" : \"Configuration Complete\",\"UniqueId\" : \"ID1234\",\"Data\" : \"ADDC has completed configuration.\"}'\n",
+                                "Invoke-RestMethod -Method PUT -Uri $waitHandleUrl -Body $cfnMessage\n",
+                                "Restart-Computer -Force\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Type": "OS::Nova::Server"
+        },
+        "ADWaitCondition": {
+            "DependsOn": "ADDController",
+            "Properties": {
+                "Handle": {
+                    "Ref": "ADWaitHandle"
+                },
+                "Timeout": "3600"
+            },
+            "Type": "AWS::CloudFormation::WaitCondition"
+        },
+        "ADWaitHandle": {
+            "Type": "AWS::CloudFormation::WaitConditionHandle"
+        },
+        "ExchangeWaitCondition": {
+            "DependsOn": "MSEXCH2013",
+            "Properties": {
+                "Handle": {
+                    "Ref": "ExchangeWaitHandle"
+                },
+                "Timeout": "3600"
+            },
+            "Type": "AWS::CloudFormation::WaitCondition"
+        },
+        "ExchangeWaitHandle": {
+            "Type": "AWS::CloudFormation::WaitConditionHandle"
+        },
+        "FrontEnd": {
+            "DependsOn": "ADDController",
+            "Properties": {
+                "ImageId":  {
+                    "Ref": "FrontendImage"
+                },
+                "Tags": [ {"Key":"Name", "Value":"frontend-server"}],
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SubnetId": {
+                    "Ref": "PrivateSubnetId"
+                },
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash -v\n",
+                                "domainname=\"",
+                                {
+                                    "Ref": "ADDomainName"
+                                },
+                                "\"\n",
+                                "owahostname=\"",
+                                {
+                                    "Ref": "OwaHostName"
+                                },
+                                "\"\n",
+                                "owaip=\"",
+                                {
+                                    "Fn::GetAtt": ["MSEXCH2013", "PrivateIp"]
+                                },
+                                "\"\n",
+                                "mask2cidr() {\n",
+                                "nbits=0\n",
+                                "IFS=.\n",
+                                "for dec in $1 ; do\n",
+                                "case $dec in\n",
+                                "255) let nbits+=8;;\n",
+                                "254) let nbits+=7;;\n",
+                                "252) let nbits+=6;;\n",
+                                "248) let nbits+=5;;\n",
+                                "240) let nbits+=4;;\n",
+                                "224) let nbits+=3;;\n",
+                                "192) let nbits+=2;;\n",
+                                "128) let nbits+=1;;\n",
+                                "0);;\n",
+                                "*) echo \"Error: $dec is not recognised\"; exit 1\n",
+                                "esac\n",
+                                "done\n",
+                                "echo \"$nbits\"\n",
+                                "}\n",
+                                "MASK=$(ifconfig $n | grep 'Mask:'| grep -v '127.0.0.1' | cut -d: -f4 | awk '{ print $1}')\n",
+                                "numbits=$(mask2cidr $MASK)\n",
+                                "gateway=$(/sbin/ip route | awk '/default/ { print $3 }')\n",
+                                "rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY*\n",
+                                "cd /tmp\n",
+                                "#wget http://packages.sw.be/rpmforge-release/rpmforge-release-0.5.1-1.el5.rf.x86_64.rpm\n",
+                                "#rpm -ivh rpmforge-release-0.5.1-1.el5.rf.x86_64.rpm\n",
+                                "yum -y install postfix amavisd-new clamav clamav-devel spamassassin squid openssl\n",
+                                "postconf -e 'myorigin = '$domainname\n",
+                                "postconf -e 'mynetworks = '$gateway/$numbits\n",
+                                "postconf -e 'relay_domains = '$domainname\n",
+                                "postconf -e 'relayhost='$owahostname\n",
+                                "cat > /etc/mail/spamassassin/local.cf <<EOF\n",
+                                "use_bayes 1\n",
+                                "use_bayes_rules 1\n",
+                                "bayes_auto_learn 1\n",
+                                "use_dcc 1\n",
+                                "dcc_path /usr/bin/dccproc\nuse_razor2 1\n",
+                                "EOF\n",
+                                "cat > /etc/amavisd.conf <<EOF \n",
+                                "\\$mydomain = $domainname;\n",
+                                "\\$max_servers = 4;\n",
+                                "\\$QUARANTINEDIR = \"/var/virusmails\"; \n",
+                                "\\$log_level = 1; \n",
+                                "@local_domains_maps = ( 1 ); \n",
+                                "\\$sa_tag_level_deflt  = -999; \n",
+                                "\\$sa_tag2_level_deflt = 4.0; \n",
+                                "\\$sa_kill_level_deflt = 6.9; \n",
+                                "\\$sa_dsn_cutoff_level = 6.9; \n",
+                                "\\$sa_crediblefrom_dsn_cutoff_level = 15;\n",
+                                "\\$sa_quarantine_cutoff_level = 15; \n",
+                                "\\$sa_spam_subject_tag = '***SPAM*** ';\n",
+                                "\\$myhostname = $owahostname;\n",
+                                "\\$final_virus_destiny      = D_DISCARD;\n",
+                                "\\$final_banned_destiny     = D_REJECT;\n",
+                                "\\$final_spam_destiny       = D_DISCARD;\n",
+                                "@av_scanners = (\n",
+                                "['ClamAV-clamd',\\&amp;ask_daemon, [\"CONTSCAN {}\\\\n\", \"/tmp/clamd.socket\"], qr/\bOK$/m, qr/\bFOUND$/m,qr/^.*?: (?!Infected Archive)(.*) FOUND$/m ],);\n",
+                                "@av_scanners_backup = ();\n",
+                                "EOF\n",
+                                "cat >> /etc/postfix/master.cf <<EOF\n",
+                                "amavisfeed unix    -       -       n        -      4     lmtp\n",
+                                "    -o lmtp_data_done_timeout=1200\n",
+                                "    -o lmtp_send_xforward_command=yes\n",
+                                "    -o disable_dns_lookups=yes\n",
+                                "    -o max_use=20\n",
+                                "127.0.0.1:10025 inet n    -       n       -       -     smtpd\n",
+                                "    -o content_filter=\n",
+                                "    -o smtpd_delay_reject=no\n",
+                                "    -o smtpd_client_restrictions=permit_mynetworks,reject\n",
+                                "    -o smtpd_helo_restrictions=\n",
+                                "    -o smtpd_sender_restrictions=\n",
+                                "    -o smtpd_recipient_restrictions=permit_mynetworks,reject\n",
+                                "    -o smtpd_data_restrictions=reject_unauth_pipelining\n",
+                                "    -o smtpd_end_of_data_restrictions=\n",
+                                "    -o smtpd_restriction_classes=\n",
+                                "    -o mynetworks=127.0.0.0/8\n",
+                                "    -o smtpd_error_sleep_time=0\n",
+                                "    -o smtpd_soft_error_limit=1001\n",
+                                "    -o smtpd_hard_error_limit=1000\n",
+                                "    -o smtpd_client_connection_count_limit=0\n",
+                                "    -o smtpd_client_connection_rate_limit=0\n",
+                                "    -o receive_override_options=no_header_body_checks,no_unknown_recipient_checks,no_milters,no_address_mappings\n",
+                                "    -o local_header_rewrite_clients=\n",
+                                "    -o smtpd_milters=\n",
+                                "    -o local_recipient_maps=\n",
+                                "    -o relay_recipient_maps=\n",
+                                "EOF\n",
+                                "cat >> /etc/postfix/main.cf <<EOF\n",
+                                "content_filter=amavisfeed:[127.0.0.1]:10024\n",
+                                "EOF\n",
+                                "openssl genrsa -out /etc/pki/tls/certs/owa.key 1024\n",
+                                "touch openssl.cnf\n",
+                                "cat >> openssl.cnf <<EOF\n",
+                                "[ req ]\n",
+                                "prompt = no\n",
+                                "distinguished_name = req_distinguished_name\n",
+                                "[ req_distinguished_name ]\n",
+                                "C = US\n",
+                                "ST = Test\n",
+                                "L = Seattle\n",
+                                "O = MSFT\n",
+                                "OU = IT\n",
+                                "CN = $owahostname\n",
+                                "emailAddress = administrator@$domainname\n",
+                                "EOF\n",
+                                "openssl req -config openssl.cnf -new -key /etc/pki/tls/certs/owa.key -out /etc/pki/tls/certs/owa.csr\n",
+                                "openssl x509 -req -days 1024 -in /etc/pki/tls/certs/owa.csr -signkey /etc/pki/tls/certs/owa.key -out /etc/pki/tls/certs/owa.crt\n",
+                                "cat > /etc/squid/squid.conf <<EOF\n",
+                                "visible_hostname $owahostname\n",
+                                "debug_options ALL,1\n",
+                                "https_port 443 accel cert=/etc/pki/tls/certs/owa.crt key=/etc/pki/tls/certs/owa.key defaultsite=$owahostname \n",
+                                "cache_peer $owaip parent 443 0 no-query proxy-only originserver login=PASS ssl sslflags=DONT_VERIFY_PEER front-end-https=on ssl sslflags=DONT_VERIFY_PEER sslcert=/etc/pki/tls/certs/owa.crt sslkey=/etc/pki/tls/certs/owa.key name=owaserver\n",
+                                "acl owa dstdomain $owahostname\n",
+                                "cache_peer_access owaserver allow owa\n",
+                                "cache_peer_access owaserver deny all\n",
+                                "never_direct allow owa\n",
+                                "http_access allow owa\n",
+                                "http_access deny all\n",
+                                "miss_access allow owa\n",
+                                "miss_access deny all\n",
+                                "EOF\n",
+                                "service postfix restart\n",
+                                "service squid restart\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Type": "AWS::EC2::Instance"
+        },
+        "MSEXCH2013": {
+            "DependsOn": "ADWaitCondition",
+            "Properties": {
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "VersionArch2Image",
+                        {
+                            "Ref": "WindowsVersion"
+                        },
+                        {
+                            "Fn::FindInMap": [
+                                "Flavor2Arch",
+                                {
+                                    "Ref": "InstanceType"
+                                },
+                                "Arch"
+                            ]
+                        }
+                    ]
+                },
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SubnetId": {
+                    "Ref": "PrivateSubnetId"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "exchange-server"
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#ps1_sysnative\n",
+                                "Get-Disk | ? IsOffline | Set-Disk -IsOffline:$false\n",
+                                "$adminusername = \"",
+                                {
+                                    "Ref": "ADDomainAdminUsername"
+                                },
+                                "\"\n",
+                                "$adminpassword = \"",
+                                {
+                                    "Ref": "ADDomainAdminPassword"
+                                },
+                                "\"\n",
+                                "$LocalAdminUsername = \"",
+                                {
+                                    "Ref": "LocalAdministratorUsername"
+                                },
+                                "\"\n",
+                                "$DatabaseName = \"",
+                                {
+                                    "Ref": "DatabaseName"
+                                },
+                                "\"\n",
+                                "$setupPath = \"",
+                                {
+                                    "Ref": "IsoSetupPath"
+                                },
+                                "\"\n",
+                                "$domain = \"",
+                                {
+                                    "Ref": "ADDomainName"
+                                },
+                                "\"\n",
+                                "$OwaName = \"",
+                                {
+                                    "Ref": "OwaHostName"
+                                },
+                                "\"\n",
+                                "$waitHandleUrl = \"",
+                                {
+                                    "Ref": "ADWaitHandle"
+                                },
+                                "\"\n",
+                                "$cfnMessage = '{\"Status\" : \"SUCCESS\",\"Reason\" : \"Configuration Complete\",\"UniqueId\" : \"ID1234\",\"Data\" : \"Application has completed configuration.\"}'\n",
+                                "#Invoke-RestMethod -Method PUT -Uri $waitHandleUrl -Body $cfnMessage\n",
+                                "$tempFolder = \"c:\\Windows\\temp\\\"\n",
+                                "$logFile = $tempFolder + \"install_exchange2013_log.txt\"\n",
+                                "if(!(Test-Path -Path $logFile )){\n",
+                                "New-Item $logFile -type file\n",
+                                "}\n",
+                                "function log([string] $message){\n",
+                                "Add-Content $logFile $message\n",
+                                "}\n",
+                                "function Generate-Windows-Password($passwordLength=30){\n",
+                                "$passwordFound = $False\n",
+                                "$maxSteps = 100\n",
+                                "$password = \"\"\n",
+                                "$assembly = [Reflection.Assembly]::LoadWithPartialName(\"System.Web\")\n",
+                                "\n",
+                                "while ($passwordFound -ne $True -and $maxSteps -ne 0){\n",
+                                "$password =  [System.Web.Security.Membership]::GeneratePassword($passwordLength,0)\n",
+                                "\n",
+                                "$i = 0\n",
+                                "$upper = [regex]\"[A-Z]\"\n",
+                                "$lower = [regex]\"[a-z]\"\n",
+                                "$number = [regex]\"[0-9]\"\n",
+                                "$special = [regex]\"[^a-zA-Z0-9]\"\n",
+                                "If ($upper.Matches($password).count -ge 1){\n",
+                                "$i++\n",
+                                "}\n",
+                                "If ($lower.Matches($password).count -ge 1){\n",
+                                "$i++\n",
+                                "}\n",
+                                "If ($number.Matches($password).count -ge 1){\n",
+                                "$i++\n",
+                                "}\n",
+                                "If ($special.Matches($password).count -ge 1){\n",
+                                "$i++\n",
+                                "}\n",
+                                "If ($i -eq 4){\n",
+                                "$passwordFound = $True\n",
+                                "}\n",
+                                "$maxSteps = $maxSteps - 1\n",
+                                "}\n",
+                                "if ($passwordFound){\n",
+                                "$password = $password -replace \":\", \"?\"\n",
+                                "return $password\n",
+                                "}\n",
+                                "else{\n",
+                                "throw \"Failed to generate password.\"\n",
+                                "}\n",
+                                "}\n",
+                                "\n",
+                                "log $env:TEMP\n",
+                                "$ThisScript = $MyInvocation.MyCommand.Definition\n",
+                                "$DestinationScript = \"C:\\Windows\\Temp\\Exchange_Unattended.ps1\"\n",
+                                "$iso = Mount-DiskImage -PassThru $setupPath\n",
+                                "$isoSetupPath = (Get-Volume -DiskImage $iso).DriveLetter + \":\\setup.exe\"\n",
+                                "\n",
+                                "Write-Host \"Installing Exchange Server 2013\"\n",
+                                "if (!($env:userdomain -eq $domain))\n",
+                                "{\n",
+                                "$hostname = hostname\n",
+                                "$localAdminPassword = Generate-Windows-Password\n",
+                                "$computer = [ADSI]\"WinNT://$env:computername\"\n",
+                                "$localAdmin = $Computer.Create(\"User\", $localAdminUsername)\n",
+                                "$localAdmin.SetPassword($localAdminPassword)\n",
+                                "$localAdmin.SetInfo()\n",
+                                "Write-Host $localAdminPassword \n",
+                                "([ADSI]\"WinNT://$env:computername/Administrators,group\").Add(\"WinNT://$env:computername/$localAdminUsername\")\n",
+                                "\n",
+                                "#Join the Active Directory Domain\n",
+                                "Sleep 20\n",
+                                "netdom join $env:computername /Domain:$domain /UserD:$adminusername /PasswordD:$adminpassword /UserO:$LocalAdminUsername /PasswordO:$localAdminPassword\n",
+                                "if (!$?) {\n",
+                                "throw \"Failed to join Active Directory Domain.\"\n",
+                                "}\n",
+                                "Copy-Item -Path $ThisScript -Destination $DestinationScript\n",
+                                "Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce\"  -Name \"ConfigureExchange\" -Value (\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\Powershell.exe -executionPolicy Unrestricted -File $DestinationScript\")\n",
+                                "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name AutoAdminLogon -Value 1\n",
+                                "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name DefaultUserName -Value \"$domain\\$adminusername\"\n",
+                                "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name DefaultPassword -Value $adminpassword\n",
+                                "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name DefaultDomainName -Value $domain\n",
+                                "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name AutoLogonCount -Value 2 -Type \"DWord\"\n",
+                                "Install-WindowsFeature RSAT-ADDS, AS-HTTP-Activation, Desktop-Experience, NET-Framework-45-Features, RPC-over-HTTP-proxy, RSAT-Clustering, RSAT-Clustering-CmdInterface, Web-Mgmt-Console, WAS-Process-Model, Web-Asp-Net45, Web-Basic-Auth, Web-Client-Auth, Web-Digest-Auth, Web-Dir-Browsing, Web-Dyn-Compression, Web-Http-Errors, Web-Http-Logging, Web-Http-Redirect, Web-Http-Tracing, Web-ISAPI-Ext, Web-ISAPI-Filter, Web-Lgcy-Mgmt-Console, Web-Metabase, Web-Mgmt-Console, Web-Mgmt-Service, Web-Net-Ext45, Web-Request-Monitor, Web-Server, Web-Stat-Compression, Web-Static-Content, Web-Windows-Auth, Web-WMI, Windows-Identity-Foundation\n",
+                                "log \"Installed windows features\"\n",
+                                "Restart-Computer -Force\n",
+                                "}\n",
+                                "else\n",
+                                "{\n",
+                                "try{\n",
+                                "$CountLogon = [int](Get-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name AutoLogonCount).AutoLogonCount\n",
+                                "if ($CountLogon -eq 1)\n",
+                                "{\n",
+                                "Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce\"  -Name \"ConfigureExchange\" -Value (\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\Powershell.exe -executionPolicy Unrestricted -File $DestinationScript\")\n",
+                                "$temp = \"c:\\Windows\\Temp\"\n",
+                                "(new-object System.Net.WebClient).DownloadFile(\"http://download.microsoft.com/download/0/A/2/0A28BBFA-CBFA-4C03-A739-30CCA5E21659/FilterPack64bit.exe\" , \"$temp\\FilterPack64bit.exe\")\n",
+                                "Start-Process -Wait \"$temp\\FilterPack64bit.exe\" -ArgumentList \"/quiet\"\n",
+                                "del \"$temp\\FilterPack64bit.exe\"\n",
+                                "(new-object System.Net.WebClient).DownloadFile(\"http://download.microsoft.com/download/A/A/3/AA345161-18B8-45AE-8DC8-DA6387264CB9/filterpack2010sp1-kb2460041-x64-fullfile-en-us.exe\" , \"$temp\\filterpack2010sp1-kb2460041-x64-fullfile-en-us.exe\")\n",
+                                "Start-Process -Wait \"$temp\\filterpack2010sp1-kb2460041-x64-fullfile-en-us.exe\" -ArgumentList \"/quiet\"\n",
+                                "del \"$temp\\filterpack2010sp1-kb2460041-x64-fullfile-en-us.exe\"\n",
+                                "(new-object System.Net.WebClient).DownloadFile(\"http://download.microsoft.com/download/2/C/4/2C47A5C1-A1F3-4843-B9FE-84C0032C61EC/UcmaRuntimeSetup.exe\" , \"$temp\\UcmaRuntimeSetup.exe\")\n",
+                                "Start-Process -Wait \"$temp\\UcmaRuntimeSetup.exe\" -ArgumentList \"/quiet\"\n",
+                                "del \"$temp\\UcmaRuntimeSetup.exe\"\n",
+                                "Start-Process  -Wait -FilePath $isoSetupPath -ArgumentList \"/IAcceptExchangeServerLicenseTerms /ps\"\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Start-Process  -Wait -FilePath $isoSetupPath -ArgumentList \"/IAcceptExchangeServerLicenseTerms /p /on:$env:userdomain\"\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Start-Process  -Wait -FilePath $isoSetupPath -ArgumentList \"/IAcceptExchangeServerLicenseTerms /pd\"\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Start-Process  -Wait -FilePath $isoSetupPath -ArgumentList \"/IAcceptExchangeServerLicenseTerms /mode:install /InstallWindowsComponents /r:mb,ca /MdbName:$DatabaseName\"\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "log \"Finished first step of the Exchange install.\"\n",
+                                "Restart-Computer -Force\n",
+                                "}\n",
+                                "else\n",
+                                "{\n",
+                                "log \"Started last step of the Exchange install.\"\n",
+                                "ADD-PSSnapin Microsoft.Exchange.Management.PowerShell.SnapIn\n",
+                                "if (!$?) {\n",
+                                "log \"Failed adding snap-in\"\n",
+                                "}\n",
+                                "$ExServer=hostname\n",
+                                "$InternalName=$OwaName\n",
+                                "$ExternalName=$OwaName\n",
+                                "New-SendConnector -Internet -Name \"MSExchange Send Connector$ExServer\" -AddressSpaces \"*\"\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Get-WebservicesVirtualDirectory -Server $ExServer | Set-WebservicesVirtualDirectory -Confirm:$false -InternalURL https://$InternalName/EWS/Exchange.asmx -ExternalURL https://$externalName/EWS/Exchange.asmx -Force\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Get-OwaVirtualDirectory -Server $ExServer | Set-OwaVirtualDirectory -Confirm:$false -InternalURL https://$InternalName/owa -ExternalURL https://$ExternalName/owa \n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Get-ecpVirtualDirectory -Server $ExServer | Set-ecpVirtualDirectory -Confirm:$false -InternalURL https://$InternalName/ecp -ExternalURL https://$ExternalName/ecp\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Get-ActiveSyncVirtualDirectory -Server $ExServer | Set-ActiveSyncVirtualDirectory -Confirm:$false -InternalURL https://$InternalName/Microsoft-Server-ActiveSync -ExternalURL https://$ExternalName/Microsoft-Server-ActiveSync\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Get-OABVirtualDirectory -Server $ExServer | Set-OABVirtualDirectory -Confirm:$false -InternalUrl https://$InternalName/OAB -ExternalURL https://$ExternalName/OAB\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Set-ClientAccessServer -Confirm:$false $ExServer -AutodiscoverServiceInternalUri https://$internalName/Autodiscover/Autodiscover.xml\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Set-OutlookAnywhere -Confirm:$false -Identity \"$ExServer\\Rpc (Default Web Site)\" -InternalHostname $internalName -ExternalHostName $ExternalName -InternalClientAuthenticationMethod ntlm -InternalClientsRequireSsl:$True -ExternalClientAuthenticationMethod Basic -ExternalClientsRequireSsl:$True\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "iisreset\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "$waitHandleUrl = \"",
+                                {
+                                    "Ref": "ExchangeWaitHandle"
+                                },
+                                "\"\n",
+                                "$cfnMessage = '{\"Status\" : \"SUCCESS\",\"Reason\" : \"Configuration Complete\",\"UniqueId\" : \"ID1234\",\"Data\" : \"MSSQL has completed configuration.\"}'\n",
+                                "Invoke-RestMethod -Method PUT -Uri $waitHandleUrl -Body $cfnMessage\n",
+                                "}\n",
+                                "}\n",
+                                "catch {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "}\n",
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Type": "AWS::EC2::Instance"
+        },
+        "attachment": {
+            "Properties": {
+                "instance_uuid": {
+                    "Ref": "MSEXCH2013"
+                },
+                "mountpoint": "/dev/sdb",
+                "volume_id": {
+                    "Ref": "MediaDeviceVolumeId"
+                }
+            },
+            "Type": "OS::Cinder::VolumeAttachment"
+        },
+        "floating_ip": {
+            "Properties": {
+                "floating_network_id": {
+                    "Ref": "PublicNetId"
+                },
+                "port_id": {
+                    "Ref": "floating_ip_port"
+                }
+            },
+            "Type": "OS::Neutron::FloatingIP"
+        },
+        "floating_ip_port": {
+            "Properties": {
+                "fixed_ips": [
+                    {
+                        "subnet_id": {
+                            "Ref": "PrivateSubnetId"
+                        }
+                    }
+                ],
+                "network_id": {
+                    "Ref": "PrivateNetId"
+                }
+            },
+            "Type": "OS::Neutron::Port"
+        }
+    }
+}

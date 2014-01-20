@@ -1,0 +1,676 @@
+{
+    "Description": "MS Exchange Server 2013 Deployment",
+    "HeatTemplateVersion": "2013-05-23",
+    "Mappings": {
+        "Flavor2Arch": {
+            "m1.large": {
+                "Arch": "64"
+            },
+            "m1.medium": {
+                "Arch": "64"
+            },
+            "m1.small": {
+                "Arch": "64"
+            },
+            "m1.sminy": {
+                "Arch": "64"
+            },
+            "m1.xlarge": {
+                "Arch": "64"
+            }
+        },
+        "VersionArch2Image": {
+            "WS12R2": {
+                "64": "Windows Server 2012 R2 Std Eval VHD"
+            } 
+        }
+    },
+    "Parameters": {
+        "ADDomainAdminPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The AD domain administrator password.",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "ADDomainAdminUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Description": "The domain administrator username.",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "ADDomainName": {
+            "Description": "The active directory domain name.",
+            "MinLength": "0",
+            "Type": "String"
+        },
+        "AdministratorPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The Domain Administrator password",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "AdministratorUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "Administrator",
+            "Description": "The Domain Administrator username",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "DatabaseName": {
+            "Default": "sharepoint_config_db",
+            "Description": "SharePointDatabase Name",
+            "Type": "String"
+        },
+        "Flavor": {
+            "AllowedValues": [
+                "m1.tiny",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge"
+            ],
+            "ConstraintDescription": "Must be a valid flavor.",
+            "Description": "",
+            "Type": "String"
+        },
+        "InstanceType": {
+            "AllowedValues": [
+                "m1.sminy",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge"
+            ],
+            "ConstraintDescription": "Must be a valid EC2 instance type.",
+            "Default": "m1.medium",
+            "Description": "The exchange server instance type.",
+            "Type": "String"
+        },
+        "IsoSetupPath": {
+            "Default": "E:\\en_sharepoint_server_2013_x64_dvd_1121447.iso",
+            "Description": "The path to the sql server 2012 iso file",
+            "Type": "String"
+        },
+        "KeyName": {
+            "Description": "Name of an existing keypair to enable SSH access to the instances",
+            "Type": "String"
+        },
+        "LocalAdministratorUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "ader",
+            "Description": "The local administrator account",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "MediaDeviceVolumeId": {
+            "ConstraintDescription": "Must be a valid volume id.",
+            "Default": "ba421125-b113-45c1-b8bc-725008581f6f",
+            "Description": "Volume id",
+            "Type": "String"
+        },
+        "PrivateNetId": {
+            "ConstraintDescription": "Must be a valid net id.",
+            "Default": "3cbfe7a6-4c08-4b30-9788-785e7c9fa177",
+            "Description": "private net id",
+            "Type": "String"
+        },
+        "PrivateSubnetId": {
+            "ConstraintDescription": "Must be a valid subnet id.",
+            "Default": "3cbfe7a6-4c08-4b30-9788-785e7c9fa177",
+            "Description": "Subnet private id",
+            "Type": "String"
+        },
+        "PublicNetId": {
+            "ConstraintDescription": "Must be a valid net id.",
+            "Default": "3cbfe7a6-4c08-4b30-9788-785e7c9fa177",
+            "Description": "public net id",
+            "Type": "String"
+        },
+        "ADDomainController": {
+            "Description": "Active Directory Domain Controller",
+            "Type": "String"
+        },
+        "SPFarmUserPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The sharepoint farm user password",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "SPFarmUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "sharepointfarm",
+            "Description": "The sharepoint farm username",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "SPInstallUserPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The password of the user used to install sharepoint",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "SPInstallUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "sharepointuser",
+            "Description": "The user used to install sharepoint",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "SPAppPoolUserPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The password of the user used to create sharepoint iis app pools",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "SPAppPoolUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "spAppPool2",
+            "Description": "The user used to create sharepoint iis app pools",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "SPDbUserPassword": {
+            "AllowedPattern": "(?=^.{6,255}$)((?=.*\\d)(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[^A-Za-z0-9])(?=.*[a-z])|(?=.*[^A-Za-z0-9])(?=.*[A-Z])(?=.*[a-z])|(?=.*\\d)(?=.*[A-Z])(?=.*[^A-Za-z0-9]))^.*",
+            "ConstraintDescription": "Must contain letters, numbers and symbols",
+            "Description": "The password of user used to access MSSQL SERVER",
+            "MaxLength": "64",
+            "MinLength": "8",
+            "Type": "String"
+        },
+        "SPDbUsername": {
+            "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
+            "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
+            "Default": "Administrator",
+            "Description": "The user used to access MSSQL SERVER",
+            "MaxLength": "15",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "MSSQLServer": {
+            "Description": "MSSQL Server",
+            "Type": "String"
+        },
+        "SPMssqlMainDb": {
+            "Default": "SP201333_Config",
+            "Description": "Sharepoint MSSQL Server main database",
+            "Type": "String"
+        },
+        "SPMssqlAdminDb": {
+            "Default": "SP201333_Content_CentralAdministration",
+            "Description": "Sharepoint MSSQL Server admin database",
+            "Type": "String"
+        },
+        "SPFarmConfigPassphrase": {
+            "Description": "Sharepoint farm passphrase",
+            "Type": "String"
+        },
+        "WindowsVersion": {
+            "AllowedValues": [
+                "WS12R2"
+            ],
+            "Default": "WS12R2",
+            "Description": "Windows version of choice",
+            "Type": "String"
+        }
+    },
+    "Resources": {        
+        "SHAREPOINT2013": {
+            "Properties": {
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "VersionArch2Image",
+                        {
+                            "Ref": "WindowsVersion"
+                        },
+                        {
+                            "Fn::FindInMap": [
+                                "Flavor2Arch",
+                                {
+                                    "Ref": "InstanceType"
+                                },
+                                "Arch"
+                            ]
+                        }
+                    ]
+                },
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SubnetId": {
+                    "Ref": "PrivateSubnetId"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "exchange-server"
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#ps1_sysnative\n",
+                                "Get-Disk | ? IsOffline | Set-Disk -IsOffline:$false\n",
+                                "$adminusername = \"",
+                                {
+                                    "Ref": "ADDomainAdminUsername"
+                                },
+                                "\"\n",
+                                "$adminpassword = \"",
+                                {
+                                    "Ref": "ADDomainAdminPassword"
+                                },
+                                "\"\n",
+                                "$LocalAdminUsername = \"",
+                                {
+                                    "Ref": "LocalAdministratorUsername"
+                                },
+                                "\"\n",
+                                "$DatabaseName = \"",
+                                {
+                                    "Ref": "DatabaseName"
+                                },
+                                "\"\n",
+                                "$setupPath = \"",
+                                {
+                                    "Ref": "IsoSetupPath"
+                                },
+                                "\"\n",
+                                "$domain = \"",
+                                {
+                                    "Ref": "ADDomainName"
+                                },
+                                "\"\n",
+                                "$dcname = \"",
+                                {
+                                    "Ref": "ADDomainController"
+                                },
+                                ".",
+                                {                                
+                                    "Ref": "ADDomainName"
+                                },
+                                ".local\"\n",
+                                "$spUsername = \"",
+                                {
+                                    "Ref": "SPInstallUsername"
+                                },
+                                "\"\n",
+                                "$spUserPassword = \"",
+                                {
+                                    "Ref": "SPInstallUserPassword"
+                                },
+                                "\"\n",
+                                "$spAppPoolUsername = \"",
+                                {
+                                    "Ref": "SPAppPoolUsername"
+                                },
+                                "\"\n",
+                                "$spAppPoolUserPassword=\"",
+                                {
+                                    "Ref": "SPAppPoolUserPassword"
+                                },
+                                "\"\n",
+                                "$spFarmUsername = \"",
+                                {
+                                    "Ref": "SPFarmUsername"
+                                },
+                                "\"\n",
+                                "$spFarmUserPassword = \"",
+                                {
+                                    "Ref": "SPFarmUserPassword"
+                                },
+                                "\"\n",
+                                "$sqladmin = \"",
+                                {
+                                    "Ref": "SPDbUsername"
+                                },
+                                "\"\n",
+                                "$sqlpassword = \"",
+                                {
+                                    "Ref": "SPDbUserPassword"
+                                },
+                                "\"\n",
+                                "$serverDB = \"",
+                                {
+                                    "Ref": "MSSQLServer"
+                                },
+                                ".",
+                                {                                
+                                    "Ref": "ADDomainName"
+                                },
+                                ".local\"\n",
+                                "$dbConfig = \"",
+                                {
+                                    "Ref": "SPMssqlMainDb"
+                                },
+                                "\"\n",
+                                "$dbCentralAdmin = \"",
+                                {
+                                    "Ref": "SPMssqlAdminDb"
+                                },
+                                "\"\n",
+                                "$configPassphrase = \"",
+                                {
+                                    "Ref": "SPFarmConfigPassphrase"
+                                },
+                                "\"\n",
+                                "$machinename = hostname\n",
+                                "$tempFolder = \"c:\\Windows\\temp\\\"\n",
+                                "$logFile = $tempFolder + \"install_sharepoint2013_log.txt\"\n",
+                                "if(!(Test-Path -Path $logFile )){\n",
+                                "New-Item $logFile -type file\n",
+                                "}\n",
+                                "function log([string] $message){\n",
+                                "Add-Content $logFile $message\n",
+                                "}\n",
+                                "function Generate-Windows-Password($passwordLength=30){\n",
+                                "$passwordFound = $False\n",
+                                "$maxSteps = 100\n",
+                                "$password = \"\"\n",
+                                "$assembly = [Reflection.Assembly]::LoadWithPartialName(\"System.Web\")\n",
+                                "\n",
+                                "while ($passwordFound -ne $True -and $maxSteps -ne 0){\n",
+                                "$password =  [System.Web.Security.Membership]::GeneratePassword($passwordLength,0)\n",
+                                "\n",
+                                "$i = 0\n",
+                                "$upper = [regex]\"[A-Z]\"\n",
+                                "$lower = [regex]\"[a-z]\"\n",
+                                "$number = [regex]\"[0-9]\"\n",
+                                "$special = [regex]\"[^a-zA-Z0-9]\"\n",
+                                "If ($upper.Matches($password).count -ge 1){\n",
+                                "$i++\n",
+                                "}\n",
+                                "If ($lower.Matches($password).count -ge 1){\n",
+                                "$i++\n",
+                                "}\n",
+                                "If ($number.Matches($password).count -ge 1){\n",
+                                "$i++\n",
+                                "}\n",
+                                "If ($special.Matches($password).count -ge 1){\n",
+                                "$i++\n",
+                                "}\n",
+                                "If ($i -eq 4){\n",
+                                "$passwordFound = $True\n",
+                                "}\n",
+                                "$maxSteps = $maxSteps - 1\n",
+                                "}\n",
+                                "if ($passwordFound){\n",
+                                "$password = $password -replace \":\", \"?\"\n",
+                                "return $password\n",
+                                "}\n",
+                                "else{\n",
+                                "throw \"Failed to generate password.\"\n",
+                                "}\n",
+                                "}\n",
+                                "\n",
+                                "function Install-SP-Prereq{\n",
+                                "$preqFolder = \"E:\\\"\n",
+                                "$logFolder = \"C:\\Windows\\Temp\\\"\n",
+                                "function InstallEXE($filename, $arguments) {\n",
+                                "Start-Process -Wait $filename -ArgumentList $arguments\n",
+                                "}\n",
+                                "function InstallMSI($filename, $arguments) {\n",
+                                "$arguments = \"/i \" + $filename + \" /quiet \" + $arguments + \" /l*v \" + $logFolder + \"fullog.log\"\n",
+                                "Start-Process -Wait msiexec.exe -ArgumentList $arguments\n",
+                                "}\n",
+                                "InstallMSI $preqFolder\"sqlncli.msi\" \"IACCEPTSQLNCLILICENSETERMS=YES\"\n",
+                                "InstallMSI $preqFolder\"Synchronization.msi\"\n",
+                                "InstallMSI $preqFolder\"Windows6.1-KB974405-x64.msu\"\n",
+                                "InstallMSI $preqFolder\"MicrosoftIdentityExtensions-64.msi\"\n",
+                                "InstallMSI $preqFolder\"setup_msipc_x64.msi\"\n",
+                                "$winAppFabricParams = \"/i CacheClient,CachingService,CacheAdmin /gac /l $logFolder\" + \".log\"\n",
+                                "InstallEXE $preqFolder\"WindowsServerAppFabricSetup_x64.exe\"  $winAppFabricParams\n",
+                                "InstallEXE $preqFolder\"AppFabric1.1-RTM-KB2671763-x64-ENU.exe\" \"/quiet\"\n",
+                                "InstallEXE $preqFolder\"WcfDataServices.exe\" \"/quiet\"\n",
+                                "}\n",
+                                "log $env:TEMP\n",
+                                "$ThisScript = $MyInvocation.MyCommand.Definition\n",
+                                "$DestinationScript = \"C:\\Windows\\Temp\\Sharepoint_Unattended.ps1\"\n",
+                                "$iso = Mount-DiskImage -PassThru $setupPath\n",
+                                "$isoSetupPath = (Get-Volume -DiskImage $iso).DriveLetter + \":\\setup.exe\"\n",
+                                "\n",
+                                "Write-Host \"Installing Sharepoint 2013\"\n",
+                                "if (!($env:userdomain -eq $domain))\n",
+                                "{\n",
+                                "$hostname = hostname\n",
+                                "$localAdminPassword = Generate-Windows-Password\n",
+                                "$computer = [ADSI]\"WinNT://$env:computername\"\n",
+                                "$localAdmin = $Computer.Create(\"User\", $localAdminUsername)\n",
+                                "$localAdmin.SetPassword($localAdminPassword)\n",
+                                "$localAdmin.SetInfo()\n",
+                                "Write-Host $localAdminPassword \n",
+                                "([ADSI]\"WinNT://$env:computername/Administrators,group\").Add(\"WinNT://$env:computername/$localAdminUsername\")\n",
+                                "\n",
+                                "#Join the Active Directory Domain\n",
+                                "Sleep 20\n",
+                                "netdom join $env:computername /Domain:$domain /UserD:$adminusername /PasswordD:$adminpassword /UserO:$LocalAdminUsername /PasswordO:$localAdminPassword\n",
+                                "if (!$?) {\n",
+                                "throw \"Failed to join Active Directory Domain.\"\n",
+                                "}\n",
+                                "Copy-Item -Path $ThisScript -Destination $DestinationScript\n",
+                                "Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce\"  -Name \"ConfigureSharepoint\" -Value (\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\Powershell.exe -executionPolicy Unrestricted -File $DestinationScript\")\n",
+                                "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name AutoAdminLogon -Value 1\n",
+                                "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name DefaultUserName -Value \"$domain\\$adminusername\"\n",
+                                "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name DefaultPassword -Value $adminpassword\n",
+                                "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name DefaultDomainName -Value $domain\n",
+                                "New-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name AutoLogonCount -Value 4 -Type \"DWord\"\n",
+                                "Import-Module ServerManager\n",
+                                "Install-WindowsFeature NET-WCF-HTTP-Activation45,NET-WCF-TCP-Activation45,NET-WCF-Pipe-Activation45\n",
+                                "Install-WindowsFeature Net-Framework-Features,Web-Server,Web-WebServer,Web-Common-Http,Web-Static-Content,Web-Default-Doc,Web-Dir-Browsing,Web-Http-Errors,Web-App-Dev,Web-Asp-Net,Web-Net-Ext,Web-ISAPI-Ext,Web-ISAPI-Filter,Web-Health,Web-Http-Logging,Web-Log-Libraries,Web-Request-Monitor,Web-Http-Tracing,Web-Security,Web-Basic-Auth,Web-Windows-Auth,Web-Filtering,Web-Digest-Auth,Web-Performance,Web-Stat-Compression,Web-Dyn-Compression,Web-Mgmt-Tools,Web-Mgmt-Console,Web-Mgmt-Compat,Web-Metabase,Application-Server,AS-Web-Support,AS-TCP-Port-Sharing,AS-WAS-Support, AS-HTTP-Activation,AS-TCP-Activation,AS-Named-Pipes,AS-Net-Framework,WAS,WAS-Process-Model,WAS-NET-Environment,WAS-Config-APIs,Web-Lgcy-Scripting,Windows-Identity-Foundation,Server-Media-Foundation,Xps-Viewer\n",
+                                "log \"Installed windows features\"\n",
+                                "Restart-Computer -Force\n",
+                                "}\n",
+                                "else\n",
+                                "{\n",
+                                "try{\n",
+                                "$CountLogon = [int](Get-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\" -Name AutoLogonCount).AutoLogonCount\n",
+                                "if ($CountLogon -eq 3)\n",
+                                "{\n",
+                                "#START FIRST STEP\n",
+                                "Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce\"  -Name \"ConfigureSharepoint\" -Value (\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\Powershell.exe -executionPolicy Unrestricted -File $DestinationScript\")\n",
+                                "log \"Started second step of the Sharepoint install.\"\n",    
+                                "Install-SP-Prereq\n", 
+                                "Restart-Computer -Force\n", 
+                                "#END FIRST STEP\n",
+                                "}\n",
+                                "if ($CountLogon -eq 2)\n",
+                                "{\n",
+                                "#START SECOND STEP\n",
+                                "log \"Started third step of the Sharepoint install.\"\n",
+                                "Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce\"  -Name \"ConfigureSharepoint\" -Value (\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\Powershell.exe -executionPolicy Unrestricted -File $DestinationScript\")\n",
+                                "Write-Host \"Create AD Users for Sharepoint\"\n",
+                                "$dcsecpassword = ConvertTo-SecureString $adminpassword -AsPlainText -Force\n",
+                                "$dccreds = New-Object System.Management.Automation.PSCredential ('$adminusername\",\"$adminpassword')\n",
+                                "Import-PSSession -Session (New-PSSession -ComputerName $dcName -Credential $dccreds) -CommandName New-ADUser\n",
+                                "$Password = ConvertTo-SecureString $spFarmUserPassword -AsPlainText -Force\n",
+                                "$Description = \"$domain unattended SharePoint 2013 Farm Administrator Account\"\n",
+                                "New-ADUser -Name $spFarmUsername -AccountPassword $Password -Description $Description  -Enabled $true \n",
+                                "$Password = ConvertTo-SecureString $spUserPassword -AsPlainText -Force\n",
+                                "$Description = \"$domain unattended SharePoint 2013 Installation Account\"\n",
+                                "New-ADUser -Name $spUsername -AccountPassword $Password -Description $Description  -Enabled $true \n",
+                                "$Password = ConvertTo-SecureString $spAppPoolUserPassword -AsPlainText -Force\n",
+                                "$Description = \"$domain unattended SharePoint 2013 Application Pool Account\"\n",
+                                "New-ADUser -Name $spAppPoolUsername -AccountPassword $Password -Description $Description  -Enabled $true \n",
+                                "$User = [ADSI](\"WinNT://$domain/$spFarmUsername\")\n",
+                                "$Group = [ADSI](\"WinNT://$machinename/Administrators\")\n",
+                                "$Group.PSBase.Invoke(\"Add\",$User.PSBase.Path)\n",
+                                "$User = [ADSI](\"WinNT://$domain/$spUsername\")\n",
+                                "$Group = [ADSI](\"WinNT://$machinename/Administrators\")\n",
+                                "$Group.PSBase.Invoke(\"Add\",$User.PSBase.Path)\n",
+                                "$User = [ADSI](\"WinNT://$domain/$spAppPoolUsername\")\n",
+                                "$Group = [ADSI](\"WinNT://$machinename/Administrators\")\n",
+                                "$Group.PSBase.Invoke(\"Add\",$User.PSBase.Path)\n",
+                                "Get-PSSession | Remove-PSSession\n",
+                                "log \"Finished adding sharepoint users\"\n",
+                                "write-host \"Adding SQL Server Users\"\n",
+                                "$sqlsecpasswd = ConvertTo-SecureString $sqlpassword -AsPlainText -Force\n",
+                                "$sqlcreds = New-Object System.Management.Automation.PSCredential ('$sqladmin\",\"$secpasswd')\n",
+                                "Import-PSSession -Session (New-PSSession -ComputerName $serverDB -Credential $sqlcreds) -CommandName Invoke-Sqlcmd\n",
+                                "$domainToUpper = $domain.ToUpper()\n",
+                                "Invoke-Sqlcmd -ServerInstance  $serverDB -Database master -Query \"USE [master];\n",
+                                "CREATE LOGIN [$domainToUpper\\$spUsername] FROM WINDOWS WITH DEFAULT_DATABASE=[master];\n",
+                                "ALTER SERVER ROLE [dbcreator] ADD MEMBER [$domainToUpper\\$spUsername];\n",
+                                "ALTER SERVER ROLE [securityadmin] ADD MEMBER [$domainToUpper\\$spUsername];\"\n",
+                                "#set max-degree of parallelism to 1\n",
+                                "Invoke-Sqlcmd -ServerInstance $serverDB -Database master -Query \"EXEC sys.sp_configure N'show advanced options',N'1';\n",
+                                "GO\n",
+                                "RECONFIGURE WITH OVERRIDE;\n",
+                                "GO\n",
+                                "EXEC sys.sp_configure N'max degree of parallelism',N'1';\n",
+                                "RECONFIGURE WITH OVERRIDE;\n",
+                                "GO\n",
+                                "\";\n",
+                                "Get-PSSession | Remove-PSSession\n",
+                                "log \"Finished adding sql permissions\"\n",
+                                "log \"started installing sharepoint\"\n",
+                                "$configFile = \"E:\\config.xml\"\n",
+                                "Write-Host \"Started sharepoint setup.exe\"\n",
+                                "$SetupExe = [System.Diagnostics.Process]::Start($isoSetupPath,\"/config $configfile\")\n",
+                                "while (-not ($SetupExe.HasExited)){\n",
+                                "Start-Sleep 20\n",
+                                "Write-Host (date)\n",
+                                "}\n",
+                                "Write-Host \"Started sharepoint update.exe\"\n",
+                                "$UpdateExe = [System.Diagnostics.Process]::Start(\"E:\\ubersrvsp2013-kb2767999-fullfile-x64-glb.exe\",\"/quiet\")\n",
+                                "while (-not ($UpdateExe.HasExited)){\n",
+                                "Start-Sleep 20\n",
+                                "Write-Host (date)\n",
+                                "}\n",
+                                "Restart-Computer -Force\n",
+                                "#STOP SECOND STEP\n",                             
+                                "}\n",
+                                "if ($CountLogon -eq 1)\n",
+                                "{\n",
+                                "#START THIRD STEP\n",
+                                "Add-PSSnapin Microsoft.SharePoint.PowerShell\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "log \"ADD FARM\"\n",
+                                "$spCredential = New-Object System.Management.Automation.PSCredential ($domain + \"\\\" + $spUsername), `\n",
+                                "    (ConvertTo-SecureString -String $spUserPassword -AsPlainText -Force)\n",
+                                "$s_configPassphrase = (ConvertTo-SecureString -String $configPassphrase -AsPlainText -force)\n",
+                                "New-SPConfigurationDatabase `\n",
+                                "-DatabaseName $dbConfig `\n",
+                                "-DatabaseServer $serverDB `\n",
+                                "-AdministrationContentDatabaseName $dbCentralAdmin `\n",
+                                "-Passphrase  $s_configPassphrase `\n",
+                                "-FarmCredentials $spCredential \n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "log \"ADD SP USERS\"\n",
+                                "$UserName = \"$domain\\$spFarmUsername\"\n",
+                                "$SecureUserPassword = ConvertTo-SecureString $spFarmUserPassword -AsPlainText -Force\n",
+                                "$Credential = New-Object System.Management.Automation.PSCredential( $UserName, $SecureUserPassword)\n",
+                                "New-SPManagedAccount -Credential $Credential\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "$UserName = \"$domain\\$spAppPoolUsername\"\n",
+                                "$SecureUserPassword = ConvertTo-SecureString $spAppPoolUserPassword -AsPlainText -Force\n",
+                                "$Credential = New-Object System.Management.Automation.PSCredential ($UserName, $SecureUserPassword)\n",
+                                "New-SPManagedAccount -Credential $Credential\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "log \"INSTALL SHAREPOINT FEATURES\"\n",
+                                "Install-SPHelpCollection -All\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Initialize-SPResourceSecurity\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Install-SPService\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Install-SPFeature -AllExistingFeatures\n",
+                                "New-SPCentralAdministration -Port 10000 -WindowsAuthProvider \"NTLM\"\n",
+                                "if (!$?) {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "Install-SPApplicationContent\n",
+                                "New-ItemProperty HKLM:\\System\\CurrentControlSet\\Control\\Lsa -Name \"DisableLoopbackCheck\"  -value \"1\" -PropertyType dword\n",
+                                "}\n",
+                                "}\n",
+                                "catch {\n",
+                                "log ($error[0] | out-string)\n",
+                                "}\n",
+                                "}\n",
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Type": "AWS::EC2::Instance"
+        },
+        "attachment": {
+            "Properties": {
+                "instance_uuid": {
+                    "Ref": "SHAREPOINT2013"
+                },
+                "mountpoint": "/dev/sdb",
+                "volume_id": {
+                    "Ref": "MediaDeviceVolumeId"
+                }
+            },
+            "Type": "OS::Cinder::VolumeAttachment"
+        },
+        "floating_ip": {
+            "Properties": {
+                "floating_network_id": {
+                    "Ref": "PublicNetId"
+                },
+                "port_id": {
+                    "Ref": "floating_ip_port"
+                }
+            },
+            "Type": "OS::Neutron::FloatingIP"
+        },
+        "floating_ip_port": {
+            "Properties": {
+                "fixed_ips": [
+                    {
+                        "subnet_id": {
+                            "Ref": "PrivateSubnetId"
+                        }
+                    }
+                ],
+                "network_id": {
+                    "Ref": "PrivateNetId"
+                }
+            },
+            "Type": "OS::Neutron::Port"
+        }
+    }
+}
