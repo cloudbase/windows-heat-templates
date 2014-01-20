@@ -81,6 +81,11 @@
             "Description": "",
             "Type": "String"
         },
+        "FrontendImage": {
+            "Default": "fedora20",
+            "Description": "Redhat linux image used for reverse proxy",
+            "Type": "String"
+        },
         "InstanceType": {
             "AllowedValues": [
                 "m1.sminy",
@@ -267,35 +272,40 @@
             "Type": "AWS::CloudFormation::WaitConditionHandle"
         },
         "FrontEnd": {
+            "DependsOn": "ADDController",
             "Properties": {
-                "flavor": {
-                    "Ref": "Flavor"
+                "ImageId":  {
+                    "Ref": "FrontendImage"
                 },
-                "image": "fedora20",
-                "key_name": {
+                "Tags": [ {"Key":"Name", "Value":"frontend-server"}],
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "KeyName": {
                     "Ref": "KeyName"
                 },
-                "networks": [
-                    {
-                        "port": {
-                            "Ref": "floating_ip_port"
-                        }
-                    }
-                ],
-                "user_data": {
+                "SubnetId": {
+                    "Ref": "PrivateSubnetId"
+                },
+                "UserData": {
                     "Fn::Base64": {
                         "Fn::Join": [
                             "",
                             [
                                 "#!/bin/bash -v\n",
-                                "domainname= \"",
+                                "domainname=\"",
                                 {
                                     "Ref": "ADDomainName"
                                 },
                                 "\"\n",
-                                "owahostname= \"",
+                                "owahostname=\"",
                                 {
                                     "Ref": "OwaHostName"
+                                },
+                                "\"\n",
+                                "owaip=\"",
+                                {
+                                    "Fn::GetAtt": ["MSEXCH2013", "PrivateIp"]
                                 },
                                 "\"\n",
                                 "mask2cidr() {\n",
@@ -326,7 +336,7 @@
                                 "#rpm -ivh rpmforge-release-0.5.1-1.el5.rf.x86_64.rpm\n",
                                 "yum -y install postfix amavisd-new clamav clamav-devel spamassassin squid openssl\n",
                                 "postconf -e 'myorigin = '$domainname\n",
-                                "postconf -e 'mynetworks = '$gateway/$numbits'\n",
+                                "postconf -e 'mynetworks = '$gateway/$numbits\n",
                                 "postconf -e 'relay_domains = '$domainname\n",
                                 "postconf -e 'relayhost='$owahostname\n",
                                 "cat > /etc/mail/spamassassin/local.cf <<EOF\n",
@@ -404,18 +414,15 @@
                                 "emailAddress = administrator@$domainname\n",
                                 "EOF\n",
                                 "openssl req -config openssl.cnf -new -key /etc/pki/tls/certs/owa.key -out /etc/pki/tls/certs/owa.csr\n",
-                                "openssl x509 -req -days 1024 -in owa.csr -signkey /etc/pki/tls/certs/owa.key -out /etc/pki/tls/certs/owa.crt\n",
+                                "openssl x509 -req -days 1024 -in /etc/pki/tls/certs/owa.csr -signkey /etc/pki/tls/certs/owa.key -out /etc/pki/tls/certs/owa.crt\n",
                                 "cat > /etc/squid/squid.conf <<EOF\n",
                                 "visible_hostname $owahostname\n",
                                 "debug_options ALL,1\n",
-                                "extension_methods RPC_IN_DATA RPC_OUT_DATA\n",
-                                "https_port 443 cert=/etc/pki/tls/certs/owa.crt key=/etc/pki/tls/certs/owa.key \n",
-                                "defaultsite=$owahostname\n",
-                                "cache_peer $owahostname parent 443 0 no-query proxy-only originserver \n",
-                                "login=PASS ssl sslflags=DONT_VERIFY_PEER front-end-https=on name=owaserver\n",
-                                "acl all src 0.0.0.0/0.0.0.0\n",
+                                "https_port 443 accel cert=/etc/pki/tls/certs/owa.crt key=/etc/pki/tls/certs/owa.key defaultsite=$owahostname \n",
+                                "cache_peer $owaip parent 443 0 no-query proxy-only originserver login=PASS ssl sslflags=DONT_VERIFY_PEER front-end-https=on ssl sslflags=DONT_VERIFY_PEER sslcert=/etc/pki/tls/certs/owa.crt sslkey=/etc/pki/tls/certs/owa.key name=owaserver\n",
                                 "acl owa dstdomain $owahostname\n",
                                 "cache_peer_access owaserver allow owa\n",
+                                "cache_peer_access owaserver deny all\n",
                                 "never_direct allow owa\n",
                                 "http_access allow owa\n",
                                 "http_access deny all\n",
@@ -429,7 +436,7 @@
                     }
                 }
             },
-            "Type": "OS::Nova::Server"
+            "Type": "AWS::EC2::Instance"
         },
         "MSEXCH2013": {
             "DependsOn": "ADWaitCondition",
@@ -555,6 +562,7 @@
                                 "$maxSteps = $maxSteps - 1\n",
                                 "}\n",
                                 "if ($passwordFound){\n",
+                                "$password = $password -replace \":\", \"?\"\n",
                                 "return $password\n",
                                 "}\n",
                                 "else{\n",
@@ -647,31 +655,31 @@
                                 "if (!$?) {\n",
                                 "log ($error[0] | out-string)\n",
                                 "}\n",
-                                "Get-WebservicesVirtualDirectory -Server $ExServer | Set-WebservicesVirtualDirectory -Confirm -InternalURL https://$InternalName/EWS/Exchange.asmx -ExternalURL https://$externalName/EWS/Exchange.asmx\n",
+                                "Get-WebservicesVirtualDirectory -Server $ExServer | Set-WebservicesVirtualDirectory -Confirm:$false -InternalURL https://$InternalName/EWS/Exchange.asmx -ExternalURL https://$externalName/EWS/Exchange.asmx -Force\n",
                                 "if (!$?) {\n",
                                 "log ($error[0] | out-string)\n",
                                 "}\n",
-                                "Get-OwaVirtualDirectory -Server $ExServer | Set-OwaVirtualDirectory -Confirm -InternalURL https://$InternalName/owa -ExternalURL https://$ExternalName/owa\n",
+                                "Get-OwaVirtualDirectory -Server $ExServer | Set-OwaVirtualDirectory -Confirm:$false -InternalURL https://$InternalName/owa -ExternalURL https://$ExternalName/owa \n",
                                 "if (!$?) {\n",
                                 "log ($error[0] | out-string)\n",
                                 "}\n",
-                                "Get-ecpVirtualDirectory -Server $ExServer | Set-ecpVirtualDirectory -Confirm -InternalURL https://$InternalName/ecp -ExternalURL https://$ExternalName/ecp\n",
+                                "Get-ecpVirtualDirectory -Server $ExServer | Set-ecpVirtualDirectory -Confirm:$false -InternalURL https://$InternalName/ecp -ExternalURL https://$ExternalName/ecp\n",
                                 "if (!$?) {\n",
                                 "log ($error[0] | out-string)\n",
                                 "}\n",
-                                "Get-ActiveSyncVirtualDirectory -Server $ExServer | Set-ActiveSyncVirtualDirectory -Confirm -InternalURL https://$InternalName/Microsoft-Server-ActiveSync -ExternalURL https://$ExternalName/Microsoft-Server-ActiveSync\n",
+                                "Get-ActiveSyncVirtualDirectory -Server $ExServer | Set-ActiveSyncVirtualDirectory -Confirm:$false -InternalURL https://$InternalName/Microsoft-Server-ActiveSync -ExternalURL https://$ExternalName/Microsoft-Server-ActiveSync\n",
                                 "if (!$?) {\n",
                                 "log ($error[0] | out-string)\n",
                                 "}\n",
-                                "Get-OABVirtualDirectory -Server $ExServer | Set-OABVirtualDirectory -Confirm -InternalUrl https://$InternalName/OAB -ExternalURL https://$ExternalName/OAB\n",
+                                "Get-OABVirtualDirectory -Server $ExServer | Set-OABVirtualDirectory -Confirm:$false -InternalUrl https://$InternalName/OAB -ExternalURL https://$ExternalName/OAB\n",
                                 "if (!$?) {\n",
                                 "log ($error[0] | out-string)\n",
                                 "}\n",
-                                "Set-ClientAccessServer -Confirm $ExServer -AutodiscoverServiceInternalUri https://$internalName/Autodiscover/Autodiscover.xml\n",
+                                "Set-ClientAccessServer -Confirm:$false $ExServer -AutodiscoverServiceInternalUri https://$internalName/Autodiscover/Autodiscover.xml\n",
                                 "if (!$?) {\n",
                                 "log ($error[0] | out-string)\n",
                                 "}\n",
-                                "Set-OutlookAnywhere -Confirm -Identity \"$ExServer\\Rpc (Default Web Site)\" -InternalHostname $internalName -ExternalHostName $ExternalName -InternalClientAuthenticationMethod ntlm -InternalClientsRequireSsl:$True -ExternalClientAuthenticationMethod Basic -ExternalClientsRequireSsl:$True\n",
+                                "Set-OutlookAnywhere -Confirm:$false -Identity \"$ExServer\\Rpc (Default Web Site)\" -InternalHostname $internalName -ExternalHostName $ExternalName -InternalClientAuthenticationMethod ntlm -InternalClientsRequireSsl:$True -ExternalClientAuthenticationMethod Basic -ExternalClientsRequireSsl:$True\n",
                                 "if (!$?) {\n",
                                 "log ($error[0] | out-string)\n",
                                 "}\n",
