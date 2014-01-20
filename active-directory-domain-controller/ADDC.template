@@ -94,7 +94,8 @@
           "$user.SetPassword('", { "Ref" : "SafeModeAdministratorPassword" }, "')\n",
           "Import-Module ADDSDeployment\n",
           "$safeModePwd = (ConvertTo-SecureString '", { "Ref" : "SafeModeAdministratorPassword" }, "' -AsPlainText -Force)\n",
-          "Install-ADDSForest -DomainName '", { "Ref" : "DomainName" }, "' -DomainNetbiosName '", { "Ref" : "DomainNetbiosName" }, "' -SafeModeAdministratorPassword $safeModePwd -InstallDns -Force\n",
+          "Install-ADDSForest -DomainName '", { "Ref" : "DomainName" }, "' -DomainNetbiosName '", { "Ref" : "DomainNetbiosName" }, "' -SafeModeAdministratorPassword $safeModePwd -InstallDns -NoRebootOnCompletion -Force\n",
+          "exit 1001\n",
         ]]}}
       }
     }
