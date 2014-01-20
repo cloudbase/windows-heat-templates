@@ -137,7 +137,6 @@
             "Type": "String"
         },
         "ADDomainController": {
-            "Default": "addc-ctrl-exchange.exchangeserver.local",
             "Description": "Active Directory Domain Controller",
             "Type": "String"
         },
@@ -152,7 +151,7 @@
         "SPFarmUsername": {
             "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
             "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
-            "Default": "spFarm",
+            "Default": "sharepointfarm",
             "Description": "The sharepoint farm username",
             "MaxLength": "15",
             "MinLength": "1",
@@ -169,7 +168,7 @@
         "SPInstallUsername": {
             "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
             "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
-            "Default": "spInstall1",
+            "Default": "sharepointuser",
             "Description": "The user used to install sharepoint",
             "MaxLength": "15",
             "MinLength": "1",
@@ -186,7 +185,7 @@
         "SPAppPoolUsername": {
             "AllowedPattern": "[a-zA-Z][a-zA-Z0-9]*",
             "ConstraintDescription": "must begin with a letter and contain only alphanumeric characters.",
-            "Default": "spAppPool",
+            "Default": "spAppPool2",
             "Description": "The user used to create sharepoint iis app pools",
             "MaxLength": "15",
             "MinLength": "1",
@@ -210,17 +209,16 @@
             "Type": "String"
         },
         "MSSQLServer": {
-            "Default": "ks-nijy7revy4yq.exchangeserver.local",
             "Description": "MSSQL Server",
             "Type": "String"
         },
         "SPMssqlMainDb": {
-            "Default": "SP20133_Config",
+            "Default": "SP201333_Config",
             "Description": "Sharepoint MSSQL Server main database",
             "Type": "String"
         },
         "SPMssqlAdminDb": {
-            "Default": "SP20133_Content_CentralAdministration",
+            "Default": "SP201333_Content_CentralAdministration",
             "Description": "Sharepoint MSSQL Server admin database",
             "Type": "String"
         },
@@ -313,7 +311,11 @@
                                 {
                                     "Ref": "ADDomainController"
                                 },
-                                "\"\n",
+                                ".",
+                                {                                
+                                    "Ref": "ADDomainName"
+                                },
+                                ".local\"\n",
                                 "$spUsername = \"",
                                 {
                                     "Ref": "SPInstallUsername"
@@ -358,7 +360,11 @@
                                 {
                                     "Ref": "MSSQLServer"
                                 },
-                                "\"\n",
+                                ".",
+                                {                                
+                                    "Ref": "ADDomainName"
+                                },
+                                ".local\"\n",
                                 "$dbConfig = \"",
                                 {
                                     "Ref": "SPMssqlMainDb"
@@ -532,8 +538,13 @@
                                 "ALTER SERVER ROLE [dbcreator] ADD MEMBER [$domainToUpper\\$spUsername];\n",
                                 "ALTER SERVER ROLE [securityadmin] ADD MEMBER [$domainToUpper\\$spUsername];\"\n",
                                 "#set max-degree of parallelism to 1\n",
-                                "Invoke-Sqlcmd -ServerInstance $serverDB -Database master -Query \"EXEC sys.sp_configure N'max degree of parallelism',N'1';\n",
+                                "Invoke-Sqlcmd -ServerInstance $serverDB -Database master -Query \"EXEC sys.sp_configure N'show advanced options',N'1';\n",
+                                "GO\n",
                                 "RECONFIGURE WITH OVERRIDE;\n",
+                                "GO\n",
+                                "EXEC sys.sp_configure N'max degree of parallelism',N'1';\n",
+                                "RECONFIGURE WITH OVERRIDE;\n",
+                                "GO\n",
                                 "\";\n",
                                 "Get-PSSession | Remove-PSSession\n",
                                 "log \"Finished adding sql permissions\"\n",
