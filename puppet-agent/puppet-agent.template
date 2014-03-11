@@ -1,0 +1,96 @@
+﻿{
+  "AWSTemplateFormatVersion": "2010-09-09",
+
+  "Description": "Deploys a Windows instance with the Puppet agent installed and configured.",
+
+  "Parameters": {
+
+    "KeyName": {
+      "Description": "Name of an existing EC2 KeyPair to encrypt the Admin password",
+      "Type": "String"
+    },
+
+    "InstanceType": {
+      "Description": "EC2 instance type",
+      "Type": "String",
+      "Default": "m1.small",
+      "AllowedValues": [ "m1.sminy", "m1.small", "m1.medium", "m1.large", "m1.xlarge" ],
+      "ConstraintDescription": "must be a valid EC2 instance type."
+    },
+
+    "SubnetId": {
+      "Type": "String",
+      "Description": "SubnetId of an existing subnet"
+    },
+
+    "PuppetMasterServer": {
+      "Default": "puppet",
+      "Description": "The Puppet Master server host name or fqdn (no IP address)",
+      "Type": "String",
+      "MinLength": "3",
+      "MaxLength": "256",
+      "ConstraintDescription": "must be a valid host name."
+    },
+
+    "PuppetMasterServerIPAddress": {
+      "Default": "",
+      "Description": "The Puppet Master server IP address. If provided, a host file record will be created to map PuppetMasterServer to this IP address.",
+      "Type": "String",
+      "MinLength": "9",
+      "MaxLength": "45",
+      "ConstraintDescription": "must be a valid IP address."
+    },
+
+    "WindowsVersion": {
+      "Default": "WS12R2",
+      "Description": "Windows version of choice",
+      "Type": "String",
+      "AllowedValues": [ "WS12R2", "WS08R2" ]
+    }
+  },
+
+  "Mappings": {
+    "AWSInstanceType2Arch": {
+      "m1.small": { "Arch": "64" },
+      "m1.medium": { "Arch": "64" },
+      "m1.large": { "Arch": "64" },
+      "m1.xlarge": { "Arch": "64" },
+      "m1.sminy":  { "Arch": "64" }
+    },
+    "VersionArch2Image": {
+      "WS12R2": { "64": "Windows Server 2012 R2 Standard" },
+      "WS08R2": { "64": "Windows Server 2008 R2 Standard" }
+    }
+  },
+
+  "Resources": {
+    "WindowsInstance": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "ImageId": { "Fn::FindInMap": [ "VersionArch2Image", { "Ref": "WindowsVersion" },
+                   { "Fn::FindInMap": [ "AWSInstanceType2Arch", { "Ref": "InstanceType" }, "Arch" ] } ] },
+        "InstanceType": { "Ref": "InstanceType" },
+        "SubnetId": { "Ref": "SubnetId" },
+        "KeyName": { "Ref": "KeyName" },
+        "UserData": { "Fn::Base64": { "Fn::Join": ["", [
+          "#ps1_sysnative\n",
+          "$ErrorActionPreference = 'Stop'\n",
+          "$puppet_master_server_ip = '", { "Ref": "PuppetMasterServerIPAddress" }, "'\n,
+          "$puppet_master_server_name = 'PuppetMasterServer'\n",
+          "$puppet_agent_msi_url = 'https://pm.puppetlabs.com/cgi-bin/download.cgi?ver=latest&dist=win'\n",
+          "if ($puppet_master_server_ip) {\n",
+          "    # Validate IP address\n",
+          "    $ip = [System.Net.IPAddress]::Parse($puppet_master_server_ip)\n"
+          "    Add-Content -Path $ENV:SystemRoot\System32\Drivers\etc\hosts -Value \"$puppet_master_server_ip $puppet_master_server_name\"\n",
+          "}\n",
+          "$puppet_agent_msi_path = Join-Path $ENV:TEMP puppet_agent.msi\n",
+          "Import-Module BitsTransfer\n",
+          "Start-BitsTransfer -Source $puppet_agent_msi_url -Destination $puppet_agent_msi_path\n",
+          "cmd /c start /wait msiexec /qn /i $puppet_agent_msi_path /l*v puppet_agent_msi_log.txt PUPPET_MASTER_SERVER=$puppet_master_server_name\n",
+          "if ($lastexitcode) { throw 'Puppet agent setup failed' }\n",
+          "del $puppet_agent_msi_path\n",
+        ]]}}
+      }
+    }
+  }
+}
